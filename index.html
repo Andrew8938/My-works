@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Umay AI — Агрегатор цен Китая</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===== ГЛОБАЛЬНЫЕ СТИЛИ ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #0b0e14; color: #e4e7ed; padding: 20px; display: flex; flex-direction: column; align-items: center; transition: background 0.3s, color 0.3s; }
+    body.light { background: #f0f2f5; color: #1a1a2e; }
+    .container { max-width: 1200px; width: 100%; }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 0; border-bottom: 1px solid #1f2838; margin-bottom: 30px; flex-wrap: wrap;
+    }
+    body.light header { border-bottom-color: #d0d5dd; }
+    .logo { font-size: 28px; font-weight: 700; color: #5f7ef0; }
+    .logo span { color: #8cf0a0; }
+    nav { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    nav a {
+      color: #9aa5b5; text-decoration: none; font-weight: 500;
+      padding: 8px 14px; border-radius: 8px; cursor: pointer; transition: 0.2s;
+    }
+    nav a:hover, nav a.active { background: #1f2838; color: #fff; }
+    body.light nav a:hover, body.light nav a.active { background: #d0d5dd; color: #1a1a2e; }
+    .theme-toggle {
+      background: none; border: none; font-size: 24px; cursor: pointer;
+      padding: 4px 8px; border-radius: 30px; transition: 0.2s;
+    }
+    .theme-toggle:hover { background: #1f2838; }
+    body.light .theme-toggle:hover { background: #d0d5dd; }
+
+    .section { display: none; animation: fade 0.3s; }
+    .section.active { display: block; }
+    @keyframes fade { from { opacity: 0.4; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .btn {
+      background: #5f7ef0; border: none; padding: 12px 28px; border-radius: 40px;
+      color: white; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 16px;
+    }
+    .btn:hover { background: #4b6ad9; transform: scale(1.02); }
+    .btn-secondary { background: #2d3748; }
+    .btn-secondary:hover { background: #3f4a60; }
+    body.light .btn-secondary { background: #d0d5dd; color: #1a1a2e; }
+    body.light .btn-secondary:hover { background: #b0b8c5; }
+    .btn-success { background: #2d8f5c; }
+    .btn-success:hover { background: #1f6b44; }
+    .btn-danger { background: #e05a5a; }
+    .btn-danger:hover { background: #c44a4a; }
+
+    .hero { text-align: center; padding: 40px 0; }
+    .hero h2 { font-size: 42px; font-weight: 700; margin-bottom: 16px; }
+    .hero h2 span { color: #5f7ef0; }
+    .hero p { font-size: 18px; color: #9aa5b5; max-width: 600px; margin: 0 auto 24px; }
+    body.light .hero p { color: #4a4a6a; }
+    .features {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px; margin-top: 40px;
+    }
+    .feature-card {
+      background: #141a24; padding: 24px; border-radius: 20px;
+      border: 1px solid #1f2838; text-align: center;
+    }
+    body.light .feature-card { background: #ffffff; border-color: #d0d5dd; }
+    .feature-card .icon { font-size: 40px; margin-bottom: 10px; }
+    .feature-card h3 { font-size: 18px; margin-bottom: 6px; }
+    .feature-card p { color: #9aa5b5; font-size: 14px; }
+    .top-products {
+      grid-column: 1 / -1;
+      background: #1a212c; padding: 20px; border-radius: 20px; border: 1px solid #2a3345;
+    }
+    body.light .top-products { background: #f8f9fc; border-color: #d0d5dd; }
+    .top-products .top-list {
+      display: flex; justify-content: space-around; flex-wrap: wrap; gap: 16px; margin-top: 12px;
+    }
+    .top-item {
+      background: #0f151f; padding: 12px 20px; border-radius: 12px; flex: 1; min-width: 150px;
+      border-left: 3px solid #5f7ef0;
+    }
+    body.light .top-item { background: #ffffff; border-color: #5f7ef0; }
+    .top-item .name { font-weight: 600; }
+    .top-item .price { color: #8cf0a0; font-weight: 600; }
+    body.light .top-item .price { color: #2d8f5c; }
+    .top-item .best { font-size: 13px; color: #f0d070; }
+
+    /* ===== ЧАТ ===== */
+    .chat-box {
+      background: #141a24; border-radius: 24px; padding: 20px;
+      height: 580px; display: flex; flex-direction: column; margin-bottom: 20px;
+    }
+    body.light .chat-box { background: #ffffff; border: 1px solid #d0d5dd; }
+    .chat-messages {
+      flex: 1; overflow-y: auto; margin-bottom: 12px;
+      display: flex; flex-direction: column; gap: 10px;
+      padding-right: 8px; font-size: 15px;
+    }
+    .msg {
+      padding: 10px 16px; border-radius: 18px; max-width: 90%;
+      word-wrap: break-word; line-height: 1.5;
+    }
+    .msg.user { background: #2d3748; align-self: flex-end; }
+    body.light .msg.user { background: #5f7ef0; color: #fff; }
+    .msg.bot { background: #1f2838; align-self: flex-start; border-left: 3px solid #5f7ef0; }
+    body.light .msg.bot { background: #e8ecf1; border-left-color: #5f7ef0; color: #1a1a2e; }
+
+    .msg.bot .price-compare {
+      margin-top: 8px; background: #0f151f; padding: 12px; border-radius: 12px;
+      overflow-x: auto;
+    }
+    body.light .msg.bot .price-compare { background: #f0f2f5; }
+    .msg.bot .price-compare table {
+      width: 100%; min-width: 600px; border-collapse: collapse; font-size: 14px;
+    }
+    .msg.bot .price-compare th, .msg.bot .price-compare td {
+      padding: 8px 12px; text-align: left; border-bottom: 1px solid #2a3345;
+    }
+    body.light .msg.bot .price-compare th, body.light .msg.bot .price-compare td {
+      border-bottom-color: #d0d5dd;
+    }
+    .msg.bot .price-compare .best { color: #8cf0a0; font-weight: 700; }
+    .msg.bot .price-compare .platform { font-weight: 600; }
+    .msg.bot .buy-link {
+      display: inline-block; margin-top: 8px; background: #2d8f5c; color: #fff;
+      padding: 6px 20px; border-radius: 30px; text-decoration: none; font-weight: 500;
+      transition: 0.2s;
+    }
+    .msg.bot .buy-link:hover { background: #1f6b44; }
+
+    .chat-input {
+      display: flex; gap: 12px; margin-top: 4px;
+    }
+    .chat-input input {
+      flex: 1; padding: 12px 16px; background: #0f151f;
+      border: 1px solid #2a3345; border-radius: 30px; color: white; outline: none; font-size: 15px;
+    }
+    body.light .chat-input input { background: #f0f2f5; border-color: #d0d5dd; color: #1a1a2e; }
+    .chat-input input:focus { border-color: #5f7ef0; }
+    .chat-input button {
+      padding: 12px 24px; background: #5f7ef0; border: none;
+      border-radius: 30px; color: white; font-weight: 600; cursor: pointer; transition: 0.2s;
+    }
+    .chat-input button:hover { background: #4b6ad9; }
+    .chat-input .mic-btn {
+      background: #2d3748; border-radius: 30px; padding: 12px 16px; font-size: 20px;
+      line-height: 1; cursor: pointer; border: none; color: #e4e7ed;
+    }
+    body.light .chat-input .mic-btn { background: #d0d5dd; color: #1a1a2e; }
+    .chat-status { font-size: 14px; color: #9aa5b5; margin-top: 6px; min-height: 24px; }
+
+    /* ===== ДАШБОРД ===== */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #141a24; padding: 16px; border-radius: 16px; text-align: center;
+    }
+    body.light .stat-card { background: #ffffff; border: 1px solid #d0d5dd; }
+    .stat-card .label { font-size: 14px; color: #9aa5b5; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: #f0f4ff; }
+    body.light .stat-card .value { color: #1a1a2e; }
+    .stat-card .value.green { color: #8cf0a0; }
+    body.light .stat-card .value.green { color: #2d8f5c; }
+    .stat-card .value.blue { color: #66bbff; }
+    body.light .stat-card .value.blue { color: #1a73e8; }
+    .stat-card .value.orange { color: #ffaa66; }
+    body.light .stat-card .value.orange { color: #d9730e; }
+    .chart-container {
+      background: #141a24; border-radius: 16px; padding: 16px; height: 280px;
+    }
+    body.light .chart-container { background: #ffffff; border: 1px solid #d0d5dd; }
+
+    /* ===== КАТАЛОГ ===== */
+    .filters {
+      display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;
+      background: #141a24; padding: 16px; border-radius: 16px; align-items: center;
+    }
+    body.light .filters { background: #ffffff; border: 1px solid #d0d5dd; }
+    .filters select, .filters input {
+      background: #0f151f; border: 1px solid #2a3345; padding: 10px 14px;
+      border-radius: 30px; color: white; outline: none; font-size: 14px;
+      min-width: 140px;
+    }
+    body.light .filters select, body.light .filters input { background: #f0f2f5; border-color: #d0d5dd; color: #1a1a2e; }
+    .filters select:focus, .filters input:focus { border-color: #5f7ef0; }
+    .filters label { color: #9aa5b5; font-size: 14px; margin-right: 4px; display: flex; align-items: center; gap: 6px; }
+    .filters label input[type="checkbox"] { width: 18px; height: 18px; accent-color: #5f7ef0; }
+
+    .product-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .product-card {
+      background: #141a24; border-radius: 16px; padding: 16px;
+      border: 1px solid #1f2838; transition: 0.2s; display: flex; flex-direction: column;
+      cursor: pointer;
+    }
+    body.light .product-card { background: #ffffff; border-color: #d0d5dd; }
+    .product-card:hover { border-color: #5f7ef0; transform: translateY(-4px); box-shadow: 0 8px 20px rgba(95,126,240,0.15); }
+    .product-card .brand { font-size: 12px; color: #5f7ef0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .product-card .name { font-weight: 600; font-size: 18px; margin-top: 4px; }
+    .product-card .category { font-size: 13px; color: #9aa5b5; }
+    .product-card .price { color: #8cf0a0; font-weight: 700; font-size: 20px; margin: 8px 0; }
+    body.light .product-card .price { color: #2d8f5c; }
+    .product-card .rating { color: #f0d070; font-size: 15px; }
+    .product-card .desc { font-size: 14px; color: #9aa5b5; margin-top: 4px; flex: 1; }
+    .product-card .stock { font-size: 13px; margin-top: 6px; }
+    .product-card .stock.in { color: #8cf0a0; }
+    .product-card .stock.out { color: #e05a5a; }
+    .product-card .best-price-badge {
+      background: #2d8f5c; border-radius: 30px; padding: 2px 12px;
+      font-size: 12px; color: #fff; align-self: flex-start; margin-top: 6px;
+    }
+    .product-card .actions {
+      display: flex; justify-content: space-between; margin-top: 12px;
+    }
+    .product-card .fav-btn {
+      background: none; border: none; font-size: 24px; cursor: pointer;
+      transition: 0.2s; padding: 4px 8px; border-radius: 30px;
+    }
+    .product-card .fav-btn:hover { background: #1f2838; }
+    body.light .product-card .fav-btn:hover { background: #d0d5dd; }
+    .product-card .fav-btn.active { color: #ff4466; }
+    .product-card .price-compare-btn {
+      background: #2d8f5c; border: none; color: white; padding: 4px 14px;
+      border-radius: 30px; cursor: pointer; font-size: 13px; transition: 0.2s;
+    }
+    .product-card .price-compare-btn:hover { background: #1f6b44; }
+    .badge {
+      background: #2d3748; border-radius: 30px; padding: 4px 12px;
+      font-size: 12px; color: #c8d0dc; align-self: flex-start;
+      margin-top: 8px;
+    }
+    body.light .badge { background: #e8ecf1; color: #1a1a2e; }
+
+    .pagination {
+      display: flex; justify-content: center; gap: 12px; margin-top: 20px; flex-wrap: wrap;
+    }
+    .pagination button {
+      background: #2d3748; border: none; padding: 8px 18px;
+      border-radius: 30px; color: white; cursor: pointer; transition: 0.2s;
+    }
+    body.light .pagination button { background: #d0d5dd; color: #1a1a2e; }
+    .pagination button:hover { background: #3f4a60; }
+    body.light .pagination button:hover { background: #b0b8c5; }
+    .pagination button.active { background: #5f7ef0; color: #fff; }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ===== АДМИНКА ===== */
+    .admin-form {
+      background: #141a24; padding: 20px; border-radius: 16px; margin-bottom: 20px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;
+    }
+    body.light .admin-form { background: #ffffff; border: 1px solid #d0d5dd; }
+    .admin-form input, .admin-form select, .admin-form textarea {
+      background: #0f151f; border: 1px solid #2a3345; padding: 10px 14px;
+      border-radius: 30px; color: white; outline: none; font-size: 14px;
+    }
+    body.light .admin-form input, body.light .admin-form select, body.light .admin-form textarea {
+      background: #f0f2f5; border-color: #d0d5dd; color: #1a1a2e;
+    }
+    .admin-form .full-width { grid-column: 1 / -1; }
+    .admin-form .checkbox-group {
+      display: flex; align-items: center; gap: 8px; color: #9aa5b5;
+    }
+    .admin-form .checkbox-group input { width: 20px; height: 20px; accent-color: #5f7ef0; }
+
+    .admin-list {
+      display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto;
+    }
+    .admin-item {
+      background: #1a212c; padding: 12px 16px; border-radius: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-left: 4px solid #5f7ef0;
+    }
+    body.light .admin-item { background: #f8f9fc; border-color: #5f7ef0; }
+    .admin-item .info { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .admin-item .info .name { font-weight: 600; }
+    .admin-item .info .price { color: #8cf0a0; }
+    body.light .admin-item .info .price { color: #2d8f5c; }
+    .admin-item .info .stock-label { font-size: 13px; padding: 2px 10px; border-radius: 30px; background: #2d3748; color: #c8d0dc; }
+    body.light .admin-item .info .stock-label { background: #e8ecf1; color: #1a1a2e; }
+    .admin-item .actions { display: flex; gap: 8px; }
+    .admin-item .actions button { padding: 6px 12px; border-radius: 30px; border: none; cursor: pointer; font-size: 13px; }
+
+    /* ===== МОДАЛКА ===== */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7); display: none; justify-content: center;
+      align-items: center; z-index: 1000; padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #141a24; border-radius: 28px; padding: 30px;
+      max-width: 700px; width: 100%; max-height: 80vh; overflow-y: auto;
+      position: relative; animation: fade 0.3s;
+    }
+    body.light .modal { background: #ffffff; border: 1px solid #d0d5dd; }
+    .modal-close {
+      position: absolute; top: 12px; right: 20px;
+      background: none; border: none; font-size: 28px; cursor: pointer;
+      color: #9aa5b5; transition: 0.2s;
+    }
+    .modal-close:hover { color: #e4e7ed; transform: rotate(90deg); }
+    body.light .modal-close:hover { color: #1a1a2e; }
+    .modal .brand { font-size: 14px; color: #5f7ef0; text-transform: uppercase; }
+    .modal .name { font-size: 28px; font-weight: 700; margin: 6px 0; }
+    .modal .category { font-size: 16px; color: #9aa5b5; }
+    .modal .price { font-size: 32px; color: #8cf0a0; font-weight: 700; margin: 12px 0; }
+    body.light .modal .price { color: #2d8f5c; }
+    .modal .rating { font-size: 18px; color: #f0d070; }
+    .modal .stock-status { font-size: 16px; margin: 8px 0; }
+    .modal .desc { font-size: 16px; color: #b0bac8; margin: 12px 0; line-height: 1.5; }
+    body.light .modal .desc { color: #4a4a6a; }
+    .modal .price-comparison {
+      background: #1a212c; padding: 16px; border-radius: 12px; margin: 12px 0;
+      overflow-x: auto;
+    }
+    body.light .modal .price-comparison { background: #f0f2f5; }
+    .modal .price-comparison table {
+      width: 100%; min-width: 600px; border-collapse: collapse; font-size: 14px;
+    }
+    .modal .price-comparison th, .modal .price-comparison td {
+      padding: 8px 10px; text-align: left; border-bottom: 1px solid #2a3345;
+    }
+    body.light .modal .price-comparison th, body.light .modal .price-comparison td { border-bottom-color: #d0d5dd; }
+    .modal .price-comparison .best { color: #8cf0a0; font-weight: 700; }
+    .modal .price-comparison .platform { font-weight: 600; }
+    .modal .actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+
+    .empty-state { text-align: center; padding: 40px 0; color: #9aa5b5; }
+    .empty-state .icon { font-size: 48px; }
+    .rec-list {
+      display: flex; flex-direction: column; gap: 12px; margin-top: 12px;
+    }
+    .rec-item {
+      background: #141a24; padding: 16px 20px; border-radius: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-left: 4px solid #5f7ef0;
+    }
+    body.light .rec-item { background: #ffffff; border: 1px solid #d0d5dd; }
+    .rec-item .name { font-weight: 500; }
+    .rec-item .price { color: #8cf0a0; font-weight: 600; }
+    body.light .rec-item .price { color: #2d8f5c; }
+
+    @media (max-width: 600px) {
+      header { flex-direction: column; gap: 12px; }
+      nav { justify-content: center; }
+      .hero h2 { font-size: 28px; }
+      .chat-box { height: 450px; }
+      .filters { flex-direction: column; align-items: stretch; }
+      .modal { padding: 20px; }
+      .admin-form { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Umay<span>AI</span></div>
+    <nav>
+      <a class="active" onclick="switchSection('landing')">Главная</a>
+      <a onclick="switchSection('chat')">Чат</a>
+      <a onclick="switchSection('dashboard')">Дашборд</a>
+      <a onclick="switchSection('catalog')">Каталог</a>
+      <a onclick="switchSection('favorites')">❤️ Избранное</a>
+      <a onclick="switchSection('recommendations')">Рекомендации</a>
+      <a onclick="switchSection('admin')">⚙️ Управление</a>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</button>
+    </nav>
+  </header>
+
+  <!-- LANDING -->
+  <section id="landing" class="section active">
+    <div class="hero">
+      <h2>Умный агрегатор цен <span>из Китая</span></h2>
+      <p>Ищи товары на всех маркетплейсах Китая — Taobao, AliExpress, JD.com, Pinduoduo и другие. Находим лучшую цену за секунды!</p>
+      <button class="btn" onclick="switchSection('chat')">Найти лучшую цену</button>
+      <div class="features">
+        <div class="feature-card"><div class="icon">🇨🇳</div><h3>Все маркетплейсы Китая</h3><p>Taobao, AliExpress, JD.com, Tmall, 1688, Pinduoduo, Shopee, Lazada</p></div>
+        <div class="feature-card"><div class="icon">💰</div><h3>Сравнение цен</h3><p>Показываем лучшую цену среди всех площадок</p></div>
+        <div class="feature-card"><div class="icon">🤖</div><h3>AI-аналитика</h3><p>ИИ анализирует рынок и рекомендует лучшие предложения</p></div>
+        <div class="feature-card"><div class="icon">🚚</div><h3>Условия доставки</h3><p>Сравниваем сроки и стоимость доставки в Казахстан</p></div>
+        <div class="top-products">
+          <h3>🔥 Топ-3 товара с лучшей ценой</h3>
+          <div class="top-list" id="topProducts"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="chat" class="section">
+    <h2 style="margin-bottom: 16px;">💬 AI-агрегатор цен</h2>
+    <div class="chat-box">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Например: найди iPhone 15 Pro Max на всех площадках" />
+        <button id="chatSendBtn">Найти цену</button>
+        <button class="mic-btn" id="micBtn" title="Голосовой ввод">🎤</button>
+      </div>
+      <div class="chat-status" id="chatStatus">Готов к поиску</div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="section">
+    <h2 style="margin-bottom: 16px;">📊 Аналитика цен</h2>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="label">Средняя цена</div><div class="value green" id="avgPrice">0 ₸</div></div>
+      <div class="stat-card"><div class="label">Лучшая цена</div><div class="value blue" id="bestPrice">0 ₸</div></div>
+      <div class="stat-card"><div class="label">Маркетплейсов</div><div class="value orange" id="platformCount">8</div></div>
+      <div class="stat-card"><div class="label">Товаров</div><div class="value" id="totalProducts">0</div></div>
+    </div>
+    <div class="chart-container"><canvas id="priceChart"></canvas></div>
+    <div style="margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;">
+      <button class="btn btn-secondary" id="refreshDataBtn">🔄 Обновить</button>
+      <button class="btn btn-secondary" id="autoToggleBtn">⏸ Авто-обновление</button>
+    </div>
+  </section>
+
+  <!-- CATALOG -->
+  <section id="catalog" class="section">
+    <h2 style="margin-bottom: 16px;">📦 Каталог товаров</h2>
+    <div class="filters">
+      <div><label>Категория</label>
+        <select id="catFilter"><option value="all">Все</option></select>
+      </div>
+      <div><label>Бренд</label>
+        <select id="brandFilter"><option value="all">Все</option></select>
+      </div>
+      <div><label>Цена от</label>
+        <input type="number" id="priceMin" placeholder="0" style="width:100px;" />
+      </div>
+      <div><label>до</label>
+        <input type="number" id="priceMax" placeholder="999999" style="width:120px;" />
+      </div>
+      <div><label>Поиск</label>
+        <input type="text" id="searchInput" placeholder="название..." style="flex:1; min-width:150px;" />
+      </div>
+      <div><label><input type="checkbox" id="inStockFilter" /> Только в наличии</label></div>
+      <div><label>Сортировка</label>
+        <select id="sortSelect">
+          <option value="price-asc">По цене ↑</option>
+          <option value="price-desc">По цене ↓</option>
+          <option value="rating">По рейтингу</option>
+          <option value="name">По названию</option>
+        </select>
+      </div>
+      <button class="btn" id="applyFilterBtn">Применить</button>
+      <button class="btn btn-secondary" id="resetFilterBtn">Сбросить</button>
+    </div>
+    <div id="productGrid" class="product-grid"></div>
+    <div class="pagination" id="pagination"></div>
+  </section>
+
+  <!-- FAVORITES -->
+  <section id="favorites" class="section">
+    <h2 style="margin-bottom: 16px;">❤️ Избранное</h2>
+    <div id="favoritesGrid" class="product-grid"></div>
+  </section>
+
+  <!-- RECOMMENDATIONS -->
+  <section id="recommendations" class="section">
+    <h2 style="margin-bottom: 16px;">🎯 Рекомендации с лучшей ценой</h2>
+    <p style="color: #9aa5b5; margin-bottom: 12px;">Товары с самыми выгодными предложениями на рынке</p>
+    <div id="recList" class="rec-list"></div>
+  </section>
+
+  <!-- ADMIN -->
+  <section id="admin" class="section">
+    <h2 style="margin-bottom: 16px;">⚙️ Управление товарами</h2>
+    <div class="admin-form" id="adminForm">
+      <input type="text" id="adminName" placeholder="Название" />
+      <select id="adminCategory">
+        <option value="Смартфоны">Смартфоны</option>
+        <option value="Ноутбуки">Ноутбуки</option>
+        <option value="Планшеты">Планшеты</option>
+        <option value="Часы">Часы</option>
+        <option value="Аксессуары">Аксессуары</option>
+        <option value="Электроника">Электроника</option>
+        <option value="Техника">Техника</option>
+      </select>
+      <input type="text" id="adminBrand" placeholder="Бренд" />
+      <input type="number" id="adminPrice" placeholder="Цена (тенге)" />
+      <input type="number" id="adminRating" placeholder="Рейтинг (1-5)" step="0.1" />
+      <input type="text" id="adminImage" placeholder="URL картинки" />
+      <div class="checkbox-group">
+        <input type="checkbox" id="adminInStock" checked />
+        <label for="adminInStock">В наличии</label>
+      </div>
+      <textarea id="adminDesc" placeholder="Описание" rows="2" class="full-width"></textarea>
+      <div class="full-width" style="display:flex; gap:12px; flex-wrap:wrap;">
+        <button class="btn" id="adminSaveBtn">➕ Добавить</button>
+        <button class="btn btn-secondary" id="adminCancelBtn" style="display:none;">Отмена</button>
+        <button class="btn btn-secondary" id="adminExportBtn">📥 Экспорт CSV</button>
+      </div>
+    </div>
+    <div id="adminList" class="admin-list"></div>
+  </section>
+</div>
+
+<!-- МОДАЛКА -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 1. ПОЛНЫЙ КАТАЛОГ (100 ТОВАРОВ)
+// ============================================================
+const fullProductList = [
+  // ---- iPhone (35) ----
+  { id:1, name:'Apple iPhone 15 Pro Max 256GB', category:'Смартфоны', brand:'Apple', price:499000, rating:4.9, desc:'6.7" OLED, A17 Pro, 256GB, титан', inStock:true },
+  { id:2, name:'Apple iPhone 15 Pro 128GB', category:'Смартфоны', brand:'Apple', price:399000, rating:4.9, desc:'6.1" OLED, A17 Pro, 128GB, титан', inStock:true },
+  { id:3, name:'Apple iPhone 15 128GB', category:'Смартфоны', brand:'Apple', price:349000, rating:4.8, desc:'6.1" OLED, A16, 128GB, USB-C', inStock:true },
+  { id:4, name:'Apple iPhone 15 Plus 128GB', category:'Смартфоны', brand:'Apple', price:389000, rating:4.8, desc:'6.7" OLED, A16, 128GB, USB-C', inStock:true },
+  { id:5, name:'Apple iPhone 14 Pro Max 256GB', category:'Смартфоны', brand:'Apple', price:399000, rating:4.9, desc:'6.7" OLED, A16, 256GB, динамический остров', inStock:true },
+  { id:6, name:'Apple iPhone 14 Pro 128GB', category:'Смартфоны', brand:'Apple', price:329000, rating:4.8, desc:'6.1" OLED, A16, 128GB, динамический остров', inStock:true },
+  { id:7, name:'Apple iPhone 14 128GB', category:'Смартфоны', brand:'Apple', price:299000, rating:4.7, desc:'6.1" OLED, A15, 128GB', inStock:true },
+  { id:8, name:'Apple iPhone 14 Plus 128GB', category:'Смартфоны', brand:'Apple', price:339000, rating:4.7, desc:'6.7" OLED, A15, 128GB', inStock:true },
+  { id:9, name:'Apple iPhone 13 Pro Max 256GB', category:'Смартфоны', brand:'Apple', price:329000, rating:4.8, desc:'6.7" OLED, A15, 256GB, 120Hz', inStock:true },
+  { id:10, name:'Apple iPhone 13 Pro 128GB', category:'Смартфоны', brand:'Apple', price:279000, rating:4.8, desc:'6.1" OLED, A15, 128GB, 120Hz', inStock:true },
+  { id:11, name:'Apple iPhone 13 128GB', category:'Смартфоны', brand:'Apple', price:229000, rating:4.7, desc:'6.1" OLED, A15, 128GB', inStock:true },
+  { id:12, name:'Apple iPhone 13 Mini 128GB', category:'Смартфоны', brand:'Apple', price:199000, rating:4.6, desc:'5.4" OLED, A15, 128GB', inStock:true },
+  { id:13, name:'Apple iPhone 12 Pro Max 256GB', category:'Смартфоны', brand:'Apple', price:259000, rating:4.7, desc:'6.7" OLED, A14, 256GB', inStock:true },
+  { id:14, name:'Apple iPhone 12 Pro 128GB', category:'Смартфоны', brand:'Apple', price:219000, rating:4.6, desc:'6.1" OLED, A14, 128GB', inStock:true },
+  { id:15, name:'Apple iPhone 12 128GB', category:'Смартфоны', brand:'Apple', price:189000, rating:4.5, desc:'6.1" OLED, A14, 128GB', inStock:true },
+  { id:16, name:'Apple iPhone 12 Mini 128GB', category:'Смартфоны', brand:'Apple', price:159000, rating:4.4, desc:'5.4" OLED, A14, 128GB', inStock:true },
+  { id:17, name:'Apple iPhone SE (2022) 128GB', category:'Смартфоны', brand:'Apple', price:139000, rating:4.4, desc:'4.7" Retina, A15, 128GB, Touch ID', inStock:true },
+  { id:18, name:'Apple iPhone 11 Pro Max 256GB', category:'Смартфоны', brand:'Apple', price:199000, rating:4.5, desc:'6.5" OLED, A13, 256GB', inStock:true },
+  { id:19, name:'Apple iPhone 11 Pro 128GB', category:'Смартфоны', brand:'Apple', price:169000, rating:4.4, desc:'5.8" OLED, A13, 128GB', inStock:true },
+  { id:20, name:'Apple iPhone 11 128GB', category:'Смартфоны', brand:'Apple', price:129000, rating:4.3, desc:'6.1" LCD, A13, 128GB', inStock:true },
+  { id:21, name:'Apple iPhone XS Max 256GB', category:'Смартфоны', brand:'Apple', price:119000, rating:4.2, desc:'6.5" OLED, A12, 256GB', inStock:true },
+  { id:22, name:'Apple iPhone XS 128GB', category:'Смартфоны', brand:'Apple', price:99000, rating:4.1, desc:'5.8" OLED, A12, 128GB', inStock:true },
+  { id:23, name:'Apple iPhone XR 128GB', category:'Смартфоны', brand:'Apple', price:79000, rating:4.0, desc:'6.1" LCD, A12, 128GB', inStock:true },
+  { id:24, name:'Apple iPhone X 256GB', category:'Смартфоны', brand:'Apple', price:69000, rating:3.9, desc:'5.8" OLED, A11, 256GB', inStock:true },
+  { id:25, name:'Apple iPhone 8 Plus 64GB', category:'Смартфоны', brand:'Apple', price:49000, rating:3.8, desc:'5.5" LCD, A11, 64GB', inStock:true },
+  { id:26, name:'Apple iPhone 8 64GB', category:'Смартфоны', brand:'Apple', price:39000, rating:3.7, desc:'4.7" LCD, A11, 64GB', inStock:true },
+  { id:27, name:'Apple iPhone 7 Plus 32GB', category:'Смартфоны', brand:'Apple', price:29000, rating:3.5, desc:'5.5" LCD, A10, 32GB', inStock:true },
+  { id:28, name:'Apple iPhone 7 32GB', category:'Смартфоны', brand:'Apple', price:22000, rating:3.4, desc:'4.7" LCD, A10, 32GB', inStock:true },
+  { id:29, name:'Apple iPhone 6s Plus 64GB', category:'Смартфоны', brand:'Apple', price:18000, rating:3.2, desc:'5.5" LCD, A9, 64GB', inStock:true },
+  { id:30, name:'Apple iPhone 6s 64GB', category:'Смартфоны', brand:'Apple', price:14000, rating:3.1, desc:'4.7" LCD, A9, 64GB', inStock:true },
+  { id:31, name:'Apple iPhone 15 Pro 256GB (черный)', category:'Смартфоны', brand:'Apple', price:419000, rating:4.9, desc:'6.1" OLED, A17 Pro, 256GB, титан', inStock:true },
+  { id:32, name:'Apple iPhone 15 Pro 512GB', category:'Смартфоны', brand:'Apple', price:469000, rating:4.9, desc:'6.1" OLED, A17 Pro, 512GB, титан', inStock:true },
+  { id:33, name:'Apple iPhone 14 Pro 256GB', category:'Смартфоны', brand:'Apple', price:359000, rating:4.8, desc:'6.1" OLED, A16, 256GB', inStock:true },
+  { id:34, name:'Apple iPhone 13 256GB', category:'Смартфоны', brand:'Apple', price:249000, rating:4.7, desc:'6.1" OLED, A15, 256GB', inStock:true },
+  { id:35, name:'Apple iPhone SE (2020) 128GB', category:'Смартфоны', brand:'Apple', price:99000, rating:4.1, desc:'4.7" Retina, A13, 128GB', inStock:true },
+  // ---- Другие смартфоны (15) ----
+  { id:36, name:'Samsung Galaxy S23 Ultra', category:'Смартфоны', brand:'Samsung', price:329000, rating:4.9, desc:'6.8" Dynamic AMOLED, 200MP, S Pen', inStock:true },
+  { id:37, name:'Samsung Galaxy S23', category:'Смартфоны', brand:'Samsung', price:249000, rating:4.8, desc:'6.1" Dynamic AMOLED, 50MP', inStock:true },
+  { id:38, name:'Samsung Galaxy A54', category:'Смартфоны', brand:'Samsung', price:139000, rating:4.6, desc:'6.4" Super AMOLED, 50MP', inStock:true },
+  { id:39, name:'Xiaomi 13 Pro', category:'Смартфоны', brand:'Xiaomi', price:199000, rating:4.7, desc:'6.73" AMOLED, 50MP, Snapdragon 8 Gen 2', inStock:true },
+  { id:40, name:'Xiaomi Redmi Note 13 Pro', category:'Смартфоны', brand:'Xiaomi', price:119000, rating:4.5, desc:'6.67" AMOLED, 108MP', inStock:true },
+  { id:41, name:'Google Pixel 8 Pro', category:'Смартфоны', brand:'Google', price:249000, rating:4.8, desc:'6.7" OLED, Tensor G3, 50MP', inStock:true },
+  { id:42, name:'Google Pixel 8', category:'Смартфоны', brand:'Google', price:189000, rating:4.6, desc:'6.2" OLED, Tensor G3', inStock:true },
+  { id:43, name:'OnePlus 11', category:'Смартфоны', brand:'OnePlus', price:189000, rating:4.7, desc:'6.7" AMOLED, Snapdragon 8 Gen 2', inStock:true },
+  { id:44, name:'OnePlus Nord 3', category:'Смартфоны', brand:'OnePlus', price:99000, rating:4.4, desc:'6.74" AMOLED, Dimensity 9000', inStock:true },
+  { id:45, name:'Huawei P60 Pro', category:'Смартфоны', brand:'Huawei', price:219000, rating:4.5, desc:'6.67" OLED, 48MP, 4G', inStock:true },
+  { id:46, name:'Huawei Nova 11', category:'Смартфоны', brand:'Huawei', price:99000, rating:4.2, desc:'6.7" OLED, 50MP', inStock:true },
+  { id:47, name:'Realme GT 3', category:'Смартфоны', brand:'Realme', price:79000, rating:4.3, desc:'6.74" AMOLED, 50MP', inStock:true },
+  { id:48, name:'Nothing Phone (2)', category:'Смартфоны', brand:'Nothing', price:139000, rating:4.5, desc:'6.7" OLED, 50MP, Glyph', inStock:true },
+  { id:49, name:'Sony Xperia 5 V', category:'Смартфоны', brand:'Sony', price:179000, rating:4.4, desc:'6.1" OLED, 48MP, 4K', inStock:true },
+  { id:50, name:'Motorola Edge 40', category:'Смартфоны', brand:'Motorola', price:89000, rating:4.2, desc:'6.55" OLED, 50MP', inStock:true },
+  // ---- Ноутбуки (10) ----
+  { id:51, name:'Apple MacBook Air M2', category:'Ноутбуки', brand:'Apple', price:449000, rating:4.9, desc:'13.6" Retina, M2, 8GB, 256GB', inStock:true },
+  { id:52, name:'Apple MacBook Pro 14" M3', category:'Ноутбуки', brand:'Apple', price:599000, rating:4.9, desc:'14.2" Liquid Retina XDR, M3, 16GB', inStock:true },
+  { id:53, name:'Apple MacBook Pro 16" M3', category:'Ноутбуки', brand:'Apple', price:749000, rating:4.9, desc:'16.2" Liquid Retina XDR, M3 Max', inStock:true },
+  { id:54, name:'Lenovo ThinkPad X1 Carbon', category:'Ноутбуки', brand:'Lenovo', price:399000, rating:4.7, desc:'14" IPS, Intel i7, 16GB', inStock:true },
+  { id:55, name:'Dell XPS 15', category:'Ноутбуки', brand:'Dell', price:399000, rating:4.8, desc:'15.6" OLED, Intel i7, 32GB', inStock:true },
+  { id:56, name:'ASUS ROG Zephyrus G14', category:'Ноутбуки', brand:'ASUS', price:299000, rating:4.6, desc:'14" IPS, AMD Ryzen 9, RTX 4060', inStock:true },
+  { id:57, name:'HP Spectre x360', category:'Ноутбуки', brand:'HP', price:279000, rating:4.5, desc:'13.5" OLED, Intel i7, 16GB', inStock:true },
+  { id:58, name:'Acer Swift 5', category:'Ноутбуки', brand:'Acer', price:189000, rating:4.3, desc:'14" IPS, Intel i5, 8GB', inStock:true },
+  { id:59, name:'Microsoft Surface Laptop 5', category:'Ноутбуки', brand:'Microsoft', price:329000, rating:4.6, desc:'13.5" PixelSense, Intel i7', inStock:true },
+  { id:60, name:'Lenovo Yoga 9i', category:'Ноутбуки', brand:'Lenovo', price:259000, rating:4.5, desc:'14" OLED, Intel i7, 16GB', inStock:true },
+  // ---- Планшеты (8) ----
+  { id:61, name:'Apple iPad Pro 12.9" M2', category:'Планшеты', brand:'Apple', price:499000, rating:4.9, desc:'12.9" Liquid Retina XDR, M2, 128GB', inStock:true },
+  { id:62, name:'Apple iPad Pro 11" M2', category:'Планшеты', brand:'Apple', price:399000, rating:4.8, desc:'11" Liquid Retina, M2, 128GB', inStock:true },
+  { id:63, name:'Apple iPad Air 5 M1', category:'Планшеты', brand:'Apple', price:299000, rating:4.7, desc:'10.9" Liquid Retina, M1, 64GB', inStock:true },
+  { id:64, name:'Apple iPad 10.2 (2022)', category:'Планшеты', brand:'Apple', price:215000, rating:4.5, desc:'10.2" Retina, A13, 64GB', inStock:true },
+  { id:65, name:'Samsung Galaxy Tab S9 Ultra', category:'Планшеты', brand:'Samsung', price:399000, rating:4.7, desc:'14.6" Dynamic AMOLED, Snapdragon 8 Gen 2', inStock:true },
+  { id:66, name:'Samsung Galaxy Tab S9', category:'Планшеты', brand:'Samsung', price:299000, rating:4.6, desc:'11" Dynamic AMOLED, Snapdragon', inStock:true },
+  { id:67, name:'Xiaomi Pad 6 Pro', category:'Планшеты', brand:'Xiaomi', price:189000, rating:4.4, desc:'11" 144Hz, Snapdragon 8+ Gen 1', inStock:true },
+  { id:68, name:'Lenovo Tab P12', category:'Планшеты', brand:'Lenovo', price:129000, rating:4.2, desc:'12.7" IPS, 8GB, 128GB', inStock:true },
+  // ---- Часы (8) ----
+  { id:69, name:'Apple Watch Ultra 2', category:'Часы', brand:'Apple', price:299000, rating:4.9, desc:'49mm, титан, GPS, дайвинг', inStock:true },
+  { id:70, name:'Apple Watch Series 9', category:'Часы', brand:'Apple', price:199000, rating:4.8, desc:'45mm, Always-On, S9', inStock:true },
+  { id:71, name:'Apple Watch SE (2023)', category:'Часы', brand:'Apple', price:129000, rating:4.6, desc:'44mm, Retina, трекер', inStock:true },
+  { id:72, name:'Samsung Galaxy Watch 6 Classic', category:'Часы', brand:'Samsung', price:149000, rating:4.5, desc:'47mm, вращающийся безель, ECG', inStock:true },
+  { id:73, name:'Samsung Galaxy Watch 6', category:'Часы', brand:'Samsung', price:119000, rating:4.4, desc:'44mm, Super AMOLED, тренировки', inStock:true },
+  { id:74, name:'Garmin Fenix 7', category:'Часы', brand:'Garmin', price:249000, rating:4.7, desc:'47mm, GPS, солнечная зарядка', inStock:true },
+  { id:75, name:'Amazfit T-Rex 2', category:'Часы', brand:'Amazfit', price:69000, rating:4.3, desc:'47mm, 150+ спортивных режимов', inStock:true },
+  { id:76, name:'Xiaomi Watch 2 Pro', category:'Часы', brand:'Xiaomi', price:59000, rating:4.2, desc:'46mm, AMOLED, Wear OS', inStock:true },
+  // ---- Аксессуары (12) ----
+  { id:77, name:'Apple AirPods Max', category:'Аксессуары', brand:'Apple', price:189000, rating:4.8, desc:'Накладные, шумодав, пространственный звук', inStock:true },
+  { id:78, name:'Apple AirPods Pro 2', category:'Аксессуары', brand:'Apple', price:149000, rating:4.8, desc:'Шумодавление, адаптивный эквалайзер', inStock:true },
+  { id:79, name:'Apple AirPods 3', category:'Аксессуары', brand:'Apple', price:99000, rating:4.6, desc:'Пространственный звук, влагозащита', inStock:true },
+  { id:80, name:'Samsung Galaxy Buds 2 Pro', category:'Аксессуары', brand:'Samsung', price:89000, rating:4.5, desc:'ANC, 24-бит Hi-Fi', inStock:true },
+  { id:81, name:'Sony WH-1000XM5', category:'Аксессуары', brand:'Sony', price:129000, rating:4.9, desc:'Флагманские наушники с шумодавом', inStock:true },
+  { id:82, name:'JBL Flip 6', category:'Аксессуары', brand:'JBL', price:29000, rating:4.4, desc:'Портативная колонка, влагозащита', inStock:true },
+  { id:83, name:'Logitech MX Keys S', category:'Аксессуары', brand:'Logitech', price:49000, rating:4.6, desc:'Беспроводная клавиатура, подсветка', inStock:true },
+  { id:84, name:'Xiaomi 10000mAh Power Bank', category:'Аксессуары', brand:'Xiaomi', price:7900, rating:4.3, desc:'Быстрая зарядка, 22.5W', inStock:true },
+  { id:85, name:'Anker Nano Charger 30W', category:'Аксессуары', brand:'Anker', price:5900, rating:4.4, desc:'USB-C, GaN, компактный', inStock:true },
+  { id:86, name:'Belkin Screen Protector iPhone 15', category:'Аксессуары', brand:'Belkin', price:4900, rating:4.2, desc:'Защитное стекло, антиблик', inStock:true },
+  { id:87, name:'Otterbox Defender Case', category:'Аксессуары', brand:'Otterbox', price:9900, rating:4.1, desc:'Ударопрочный чехол для iPhone 15', inStock:true },
+  { id:88, name:'Spigen Tough Armor', category:'Аксессуары', brand:'Spigen', price:6900, rating:4.3, desc:'Двойная защита, подставка', inStock:true },
+  // ---- Техника / Электроника (12) ----
+  { id:89, name:'Xiaomi Mi Electric Scooter 4 Ultra', category:'Электроника', brand:'Xiaomi', price:189000, rating:4.4, desc:'Самокат 25км/ч, 50км запас', inStock:true },
+  { id:90, name:'Ninebot KickScooter Max G2', category:'Электроника', brand:'Ninebot', price:229000, rating:4.5, desc:'Самокат с подвеской, 40км', inStock:true },
+  { id:91, name:'Dyson V15 Detect', category:'Техника', brand:'Dyson', price:359000, rating:4.7, desc:'Пылесос с лазером, 60мин', inStock:true },
+  { id:92, name:'Dyson Gen5Detect', category:'Техника', brand:'Dyson', price:399000, rating:4.8, desc:'Новейший пылесос, 70мин', inStock:true },
+  { id:93, name:'Philips Airfryer XXL HD9860', category:'Техника', brand:'Philips', price:149000, rating:4.5, desc:'Фритюрница, 7.3л, Smart', inStock:true },
+  { id:94, name:'Philips Airfryer Essential', category:'Техника', brand:'Philips', price:79000, rating:4.3, desc:'Компактная, 4л', inStock:true },
+  { id:95, name:'Instant Pot Pro Plus', category:'Техника', brand:'Instant', price:119000, rating:4.4, desc:'Мультиварка-скороварка 8 в 1', inStock:true },
+  { id:96, name:'Bosch Tassimo Suny', category:'Техника', brand:'Bosch', price:89000, rating:4.3, desc:'Капсульная кофеварка, 15 бар', inStock:true },
+  { id:97, name:'De\'Longhi Magnifica S', category:'Техника', brand:'De\'Longhi', price:199000, rating:4.6, desc:'Автоматическая кофемашина', inStock:true },
+  { id:98, name:'Xiaomi Robot Vacuum S10+', category:'Техника', brand:'Xiaomi', price:199000, rating:4.6, desc:'Лазерная навигация, влажная уборка', inStock:true },
+  { id:99, name:'iRobot Roomba i7+', category:'Техника', brand:'iRobot', price:299000, rating:4.7, desc:'Робот-пылесос с самоочисткой', inStock:true },
+  { id:100, name:'Xiaomi Mi Air Purifier 4 Pro', category:'Техника', brand:'Xiaomi', price:99000, rating:4.4, desc:'Очиститель воздуха, 600м³/ч', inStock:true }
+];
+
+// ============================================================
+// 2. НАСТРОЙКИ ПЛАТФОРМ И ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ============================================================
+const CHINA_PLATFORMS = [
+  { id: 'taobao', name: 'Taobao', icon: '🛒', shipDays: '7-14', rating: 4.7 },
+  { id: 'aliexpress', name: 'AliExpress', icon: '🌐', shipDays: '10-20', rating: 4.5 },
+  { id: 'jd', name: 'JD.com', icon: '📦', shipDays: '5-10', rating: 4.8 },
+  { id: 'pinduoduo', name: 'Pinduoduo', icon: '🛍️', shipDays: '7-12', rating: 4.3 },
+  { id: 'tmall', name: 'Tmall', icon: '🏬', shipDays: '5-10', rating: 4.9 },
+  { id: '1688', name: '1688.com', icon: '🏭', shipDays: '14-21', rating: 4.2 },
+  { id: 'shopee', name: 'Shopee', icon: '🛍️', shipDays: '10-18', rating: 4.4 },
+  { id: 'lazada', name: 'Lazada', icon: '🛒', shipDays: '8-15', rating: 4.3 }
+];
+
+function generatePriceOnPlatform(basePrice, platformId) {
+  const variation = 0.8 + Math.random() * 0.4;
+  let price = Math.round(basePrice * variation);
+  if (platformId === 'taobao') price *= 0.95;
+  if (platformId === 'pinduoduo') price *= 0.85;
+  if (platformId === 'jd') price *= 1.05;
+  if (platformId === 'tmall') price *= 1.10;
+  if (platformId === '1688') price *= 0.75;
+  if (platformId === 'shopee') price *= 0.90;
+  if (platformId === 'lazada') price *= 0.92;
+  return Math.round(price);
+}
+
+function getPricesForProduct(product) {
+  return CHINA_PLATFORMS.map(platform => ({
+    platform: platform,
+    price: generatePriceOnPlatform(product.price, platform.id),
+    currency: '₸',
+    inStock: Math.random() > 0.15,
+    deliveryDays: platform.shipDays,
+    rating: platform.rating
+  }));
+}
+
+function findBestPrice(prices) {
+  return prices.reduce((min, p) => p.price < min.price ? p : min, prices[0]);
+}
+
+// ============================================================
+// 3. УМНЫЙ ПОИСК ТОВАРА (исправлен для iPhone)
+// ============================================================
+function findProductByQuery(query) {
+  const lower = query.toLowerCase();
+  const stopWords = ['найди','сравни','цена','сколько','стоит','найти','покажи','лучшая','дешевле','где','купить','маркетплейс','площадка','taobao','aliexpress','jd','pinduoduo','tmall','1688','shopee','lazada'];
+  let tokens = lower.split(/\s+/).filter(t => t.length > 1 && !stopWords.includes(t));
+  if (tokens.length === 0) return null;
+
+  // Специальная обработка для iPhone
+  const iphoneVariants = ['iphone', 'айфон'];
+  const modelNumbers = ['14', '15', '13', '12', '11', 'xs', 'xr', 'se', '8', '7', '6s'];
+  let foundIphone = false;
+  let foundModel = null;
+  for (let t of tokens) {
+    if (iphoneVariants.some(v => t.includes(v))) foundIphone = true;
+    if (modelNumbers.some(n => t.includes(n))) foundModel = t;
+  }
+
+  if (foundIphone && foundModel) {
+    const wantsPro = tokens.some(t => t.includes('pro'));
+    const wantsMax = tokens.some(t => t.includes('max'));
+    const wantsPlus = tokens.some(t => t.includes('plus'));
+    let matches = products.filter(p => {
+      const name = p.name.toLowerCase();
+      const hasIphone = name.includes('iphone') || name.includes('айфон');
+      const hasModel = name.includes(foundModel);
+      if (!hasIphone || !hasModel) return false;
+      if (!wantsPro && name.includes('pro')) return false;
+      if (!wantsMax && name.includes('max')) return false;
+      if (!wantsPlus && name.includes('plus')) return false;
+      return true;
+    });
+    if (matches.length > 0) {
+      matches.sort((a,b) => a.price - b.price);
+      return matches[0];
+    }
+  }
+
+  // Старый универсальный поиск
+  let bestMatch = null;
+  let bestScore = 0;
+  for (let p of products) {
+    const name = p.name.toLowerCase();
+    let score = 0;
+    for (let token of tokens) {
+      if (name.includes(token)) {
+        score += 10;
+        if (name.includes(token) && token.length > 1) score += 5;
+      }
+      if (p.brand && p.brand.toLowerCase().includes(token)) score += 3;
+      if (p.category && p.category.toLowerCase().includes(token)) score += 2;
+    }
+    if (score > 0) {
+      if (tokens.length <= 2 && name.split(' ').length > 3) score -= 2;
+      const allTokensMatch = tokens.every(t => name.includes(t));
+      if (allTokensMatch) score += 15;
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = p;
+      }
+    }
+  }
+  if (bestMatch && bestScore > 0) return bestMatch;
+
+  // Поиск по бренду/категории
+  for (let p of products) {
+    const brand = p.brand.toLowerCase();
+    const category = p.category.toLowerCase();
+    for (let token of tokens) {
+      if (brand.includes(token) || category.includes(token)) {
+        return p;
+      }
+    }
+  }
+  return null;
+}
+
+// ============================================================
+// 4. БОТ (отвечает на запросы)
+// ============================================================
+function getBotResponse(text) {
+  const lower = text.toLowerCase();
+  if (/(найди|сравни|цена|сколько стоит|найти|покажи|лучшая цена|дешевле|где купить|маркетплейс|площадка)/i.test(lower)) {
+    const found = findProductByQuery(text);
+    if (found) {
+      const prices = getPricesForProduct(found);
+      const best = findBestPrice(prices);
+      let tableRows = prices.map(p => {
+        const isBest = p.price === best.price;
+        return `<tr>
+          <td class="platform">${p.platform.icon} ${p.platform.name}</td>
+          <td class="${isBest ? 'best' : ''}">${p.price.toLocaleString()} ₸</td>
+          <td>${p.inStock ? '✅' : '❌'}</td>
+          <td>${p.deliveryDays} дн.</td>
+          <td>⭐ ${p.platform.rating}</td>
+        </tr>`;
+      }).join('');
+      return `🔍 **Сравнение цен на ${found.name}**\n\n` +
+        `<div class="price-compare"><table>
+          <tr><th>Платформа</th><th>Цена</th><th>В наличии</th><th>Доставка</th><th>Рейтинг</th></tr>
+          ${tableRows}
+        </table></div>\n` +
+        `🏆 **Лучшая цена:** ${best.platform.icon} ${best.platform.name} — ${best.price.toLocaleString()} ₸ (доставка ${best.deliveryDays} дн.)\n` +
+        `<a href="#" class="buy-link" onclick="alert('Переход к покупке на ${best.platform.name}')">🛒 Перейти к покупке</a>`;
+    } else {
+      return '🤔 Не нашёл товар по вашему запросу. Уточните название, например "iPhone 15" или "ноутбук Lenovo". Попробуйте: «найди самсунг s23» или «сравни цены на airpods».';
+    }
+  }
+  if (/(привет|здрав|хай|салам|добрый|hello|hi|ку|прив)/i.test(lower)) {
+    return '👋 Привет! Я AI-агрегатор цен. Спроси меня о любом товаре, и я найду лучшую цену на всех китайских маркетплейсах!';
+  }
+  if (/(спасибо|благодарю|ок|понял|отлично|супер|круто|спс)/i.test(lower)) {
+    return '😊 Всегда рад помочь! Если понадобится сравнить цены на другой товар — просто напиши.';
+  }
+  return '🤔 Я помогу найти лучшую цену. Напишите, что ищете, например: "найди iPhone 15 Pro Max" или "сравни цены на Samsung Galaxy".';
+}
+
+// ============================================================
+// 5. ДАННЫЕ И ИХ ЗАГРУЗКА/СОХРАНЕНИЕ
+// ============================================================
+let products = [];
+
+function loadProducts() {
+  const stored = localStorage.getItem('umay_products');
+  if (stored) {
+    try { products = JSON.parse(stored); }
+    catch(e) { products = fullProductList.map(p => ({...p})); }
+  } else {
+    products = fullProductList.map(p => ({...p}));
+  }
+  saveProducts();
+}
+function saveProducts() {
+  localStorage.setItem('umay_products', JSON.stringify(products));
+}
+
+// ============================================================
+// 6. ИЗБРАННОЕ, ТЕМА, ИСТОРИЯ ЧАТА (localStorage)
+// ============================================================
+let favorites = JSON.parse(localStorage.getItem('umay_favorites')) || [];
+function toggleFavorite(id) {
+  const idx = favorites.indexOf(id);
+  if (idx > -1) favorites.splice(idx, 1);
+  else favorites.push(id);
+  localStorage.setItem('umay_favorites', JSON.stringify(favorites));
+  renderCatalog();
+  renderFavorites();
+}
+function isFavorite(id) { return favorites.includes(id); }
+
+let currentTheme = localStorage.getItem('umay_theme') || 'dark';
+function applyTheme(theme) {
+  document.body.classList.toggle('light', theme === 'light');
+  document.getElementById('themeBtn').textContent = theme === 'light' ? '☀️' : '🌙';
+  localStorage.setItem('umay_theme', theme);
+}
+function toggleTheme() {
+  currentTheme = (currentTheme === 'dark' ? 'light' : 'dark');
+  applyTheme(currentTheme);
+}
+applyTheme(currentTheme);
+
+let chatHistory = JSON.parse(localStorage.getItem('umay_chat')) || [];
+function saveChat() { localStorage.setItem('umay_chat', JSON.stringify(chatHistory)); }
+function renderChat() {
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = chatHistory.map(msg => `<div class="msg ${msg.role}">${msg.text}</div>`).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+// ============================================================
+// 7. ЧАТ (отправка сообщений, голос)
+// ============================================================
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const chatSendBtn = document.getElementById('chatSendBtn');
+const chatStatus = document.getElementById('chatStatus');
+
+function addMessage(text, role) {
+  chatHistory.push({ text, role });
+  saveChat();
+  renderChat();
+}
+
+async function sendChatMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  addMessage(text, 'user');
+  chatInput.value = '';
+  chatStatus.textContent = '⏳ Ищу лучшую цену...';
+  await new Promise(r => setTimeout(r, 400 + Math.random()*600));
+  const reply = getBotResponse(text);
+  addMessage(reply, 'bot');
+  chatStatus.textContent = '✅ Готово';
+}
+chatSendBtn.addEventListener('click', sendChatMessage);
+chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+
+const micBtn = document.getElementById('micBtn');
+if ('webkitSpeechRecognition' in window) {
+  const recognition = new webkitSpeechRecognition();
+  recognition.lang = 'ru-RU';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  micBtn.addEventListener('click', () => {
+    recognition.start();
+    chatStatus.textContent = '🎤 Слушаю...';
+  });
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    chatInput.value = transcript;
+    chatStatus.textContent = '🎤 Распознано, ищу...';
+    sendChatMessage();
+  };
+  recognition.onerror = () => { chatStatus.textContent = '❌ Ошибка микрофона'; };
+} else {
+  micBtn.style.display = 'none';
+}
+
+// ============================================================
+// 8. НАВИГАЦИЯ
+// ============================================================
+function switchSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('nav a').forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(id)) link.classList.add('active');
+  });
+  if (id === 'dashboard') updateDashboard();
+  if (id === 'catalog') { renderCatalog(); renderPagination(); }
+  if (id === 'favorites') renderFavorites();
+  if (id === 'recommendations') generateRecommendations();
+  if (id === 'admin') renderAdminList();
+}
+
+// ============================================================
+// 9. ТОП-3 НА ЛЕНДИНГЕ
+// ============================================================
+function renderTopProducts() {
+  const top = products.slice(0, 3);
+  const container = document.getElementById('topProducts');
+  container.innerHTML = top.map(p => {
+    const prices = getPricesForProduct(p);
+    const best = findBestPrice(prices);
+    return `
+      <div class="top-item">
+        <div class="name">${p.name}</div>
+        <div class="price">${best.price.toLocaleString()} ₸</div>
+        <div class="best">⭐ Лучшая на ${best.platform.name}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// 10. ДАШБОРД
+// ============================================================
+let priceChart = null;
+let autoUpdate = true;
+let autoInterval = null;
+
+function updateDashboard() {
+  let allPrices = [];
+  products.forEach(p => {
+    const prices = getPricesForProduct(p);
+    prices.forEach(pr => allPrices.push(pr.price));
+  });
+  const avg = allPrices.length ? Math.round(allPrices.reduce((a,b) => a+b, 0) / allPrices.length) : 0;
+  const best = allPrices.length ? Math.min(...allPrices) : 0;
+  document.getElementById('avgPrice').textContent = avg.toLocaleString() + ' ₸';
+  document.getElementById('bestPrice').textContent = best.toLocaleString() + ' ₸';
+  document.getElementById('platformCount').textContent = CHINA_PLATFORMS.length;
+  document.getElementById('totalProducts').textContent = products.length;
+
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  if (priceChart) priceChart.destroy();
+  const platformAvg = CHINA_PLATFORMS.map(pl => {
+    let sum = 0, count = 0;
+    products.forEach(p => {
+      const prices = getPricesForProduct(p);
+      const found = prices.find(pr => pr.platform.id === pl.id);
+      if (found) { sum += found.price; count++; }
+    });
+    return count ? Math.round(sum/count) : 0;
+  });
+  priceChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: CHINA_PLATFORMS.map(p => p.icon + ' ' + p.name),
+      datasets: [{
+        label: 'Средняя цена (₸)',
+        data: platformAvg,
+        backgroundColor: '#5f7ef0',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: currentTheme === 'light' ? '#1a1a2e' : '#c8d0dc' } } },
+      scales: {
+        x: { ticks: { color: currentTheme === 'light' ? '#4a4a6a' : '#9aa5b5' } },
+        y: { ticks: { color: currentTheme === 'light' ? '#4a4a6a' : '#9aa5b5' } }
+      }
+    }
+  });
+}
+
+function toggleAutoUpdate() {
+  autoUpdate = !autoUpdate;
+  document.getElementById('autoToggleBtn').textContent = autoUpdate ? '⏸ Авто-обновление' : '▶ Авто-обновление';
+  if (autoUpdate) { autoInterval = setInterval(updateDashboard, 5000); updateDashboard(); }
+  else { clearInterval(autoInterval); }
+}
+document.getElementById('refreshDataBtn').addEventListener('click', updateDashboard);
+document.getElementById('autoToggleBtn').addEventListener('click', toggleAutoUpdate);
+
+// ============================================================
+// 11. КАТАЛОГ С ФИЛЬТРАМИ, СОРТИРОВКОЙ, ПАГИНАЦИЕЙ
+// ============================================================
+let currentPage = 1;
+const itemsPerPage = 12;
+const catFilter = document.getElementById('catFilter');
+const brandFilter = document.getElementById('brandFilter');
+const priceMin = document.getElementById('priceMin');
+const priceMax = document.getElementById('priceMax');
+const searchInput = document.getElementById('searchInput');
+const inStockFilter = document.getElementById('inStockFilter');
+const sortSelect = document.getElementById('sortSelect');
+const applyFilterBtn = document.getElementById('applyFilterBtn');
+const resetFilterBtn = document.getElementById('resetFilterBtn');
+const productGrid = document.getElementById('productGrid');
+const paginationEl = document.getElementById('pagination');
+
+function populateFilters() {
+  const cats = [...new Set(products.map(p => p.category))];
+  cats.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; catFilter.appendChild(opt); });
+  const brands = [...new Set(products.map(p => p.brand))];
+  brands.forEach(b => { const opt = document.createElement('option'); opt.value = b; opt.textContent = b; brandFilter.appendChild(opt); });
+}
+populateFilters();
+
+function getFilteredProducts() {
+  const cat = catFilter.value;
+  const brand = brandFilter.value;
+  const min = parseFloat(priceMin.value) || 0;
+  const max = parseFloat(priceMax.value) || Infinity;
+  const search = searchInput.value.toLowerCase().trim();
+  const onlyInStock = inStockFilter.checked;
+  let filtered = products.filter(p => {
+    if (cat !== 'all' && p.category !== cat) return false;
+    if (brand !== 'all' && p.brand !== brand) return false;
+    if (p.price < min || p.price > max) return false;
+    if (onlyInStock && !p.inStock) return false;
+    if (search && !p.name.toLowerCase().includes(search) && !p.desc.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  const sort = sortSelect.value;
+  switch (sort) {
+    case 'price-asc': filtered.sort((a,b) => a.price - b.price); break;
+    case 'price-desc': filtered.sort((a,b) => b.price - a.price); break;
+    case 'rating': filtered.sort((a,b) => b.rating - a.rating); break;
+    case 'name': filtered.sort((a,b) => a.name.localeCompare(b.name)); break;
+    default: break;
+  }
+  return filtered;
+}
+
+function renderCatalog() {
+  const filtered = getFilteredProducts();
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  if (currentPage > totalPages) currentPage = totalPages || 1;
+  const start = (currentPage - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  const pageItems = filtered.slice(start, end);
+  if (!pageItems.length) {
+    productGrid.innerHTML = '<p style="color:#9aa5b5;">Товаров не найдено.</p>';
+    return;
+  }
+  productGrid.innerHTML = pageItems.map(p => {
+    const prices = getPricesForProduct(p);
+    const best = findBestPrice(prices);
+    return `
+      <div class="product-card" onclick="openModal(${p.id})">
+        <div class="brand">${p.brand}</div>
+        <div class="name">${p.name}</div>
+        <div class="category">${p.category}</div>
+        <div class="price">${p.price.toLocaleString()} ₸</div>
+        <div class="rating">⭐ ${p.rating}</div>
+        <div class="desc">${p.desc}</div>
+        <div class="stock ${p.inStock ? 'in' : 'out'}">${p.inStock ? '✅ В наличии' : '❌ Нет'}</div>
+        ${p.rating >= 4.8 ? '<div class="badge">🔥 Топ</div>' : ''}
+        <div class="best-price-badge">🏆 Лучшая: ${best.price.toLocaleString()} ₸ (${best.platform.name})</div>
+        <div class="actions">
+          <button class="fav-btn ${isFavorite(p.id) ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${p.id});">${isFavorite(p.id) ? '❤️' : '🤍'}</button>
+          <button class="price-compare-btn" onclick="event.stopPropagation(); openPriceCompare(${p.id});">📊 Сравнить цены</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  const total = totalPages || Math.ceil(getFilteredProducts().length / itemsPerPage);
+  let html = '';
+  html += `<button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>«</button>`;
+  for (let i = 1; i <= total; i++) {
+    html += `<button onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+  }
+  html += `<button onclick="goToPage(${total})" ${currentPage === total ? 'disabled' : ''}>»</button>`;
+  paginationEl.innerHTML = html;
+}
+
+function goToPage(page) {
+  const total = Math.ceil(getFilteredProducts().length / itemsPerPage);
+  if (page < 1 || page > total) return;
+  currentPage = page;
+  renderCatalog();
+}
+
+applyFilterBtn.addEventListener('click', () => { currentPage = 1; renderCatalog(); });
+resetFilterBtn.addEventListener('click', () => {
+  catFilter.value = 'all';
+  brandFilter.value = 'all';
+  priceMin.value = '';
+  priceMax.value = '';
+  searchInput.value = '';
+  inStockFilter.checked = false;
+  sortSelect.value = 'price-asc';
+  currentPage = 1;
+  renderCatalog();
+});
+sortSelect.addEventListener('change', () => { currentPage = 1; renderCatalog(); });
+inStockFilter.addEventListener('change', () => { currentPage = 1; renderCatalog(); });
+
+// ============================================================
+// 12. АДМИНКА (CRUD)
+// ============================================================
+let editingId = null;
+function renderAdminList() {
+  const container = document.getElementById('adminList');
+  if (!products.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>Товаров нет.</p></div>';
+    return;
+  }
+  container.innerHTML = products.map(p => `
+    <div class="admin-item">
+      <div class="info">
+        <span class="name">${p.name}</span>
+        <span class="price">${p.price.toLocaleString()} ₸</span>
+        <span>${p.brand}</span>
+        <span>${p.category}</span>
+        <span>⭐ ${p.rating}</span>
+        <span class="stock-label">${p.inStock ? '✅ В наличии' : '❌ Нет'}</span>
+      </div>
+      <div class="actions">
+        <button class="btn-secondary" onclick="editProduct(${p.id})">✏️</button>
+        <button class="btn-danger" onclick="deleteProduct(${p.id})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+function deleteProduct(id) {
+  if (!confirm('Удалить товар?')) return;
+  products = products.filter(p => p.id !== id);
+  saveProducts();
+  renderAdminList();
+  renderCatalog();
+  renderFavorites();
+  renderTopProducts();
+  generateRecommendations();
+  updateDashboard();
+}
+function editProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  document.getElementById('adminName').value = p.name;
+  document.getElementById('adminCategory').value = p.category;
+  document.getElementById('adminBrand').value = p.brand;
+  document.getElementById('adminPrice').value = p.price;
+  document.getElementById('adminRating').value = p.rating;
+  document.getElementById('adminImage').value = p.image || '';
+  document.getElementById('adminInStock').checked = p.inStock !== false;
+  document.getElementById('adminDesc').value = p.desc || '';
+  document.getElementById('adminSaveBtn').textContent = '💾 Сохранить';
+  document.getElementById('adminCancelBtn').style.display = 'inline-block';
+}
+function cancelEdit() {
+  editingId = null;
+  document.getElementById('adminForm').reset();
+  document.getElementById('adminInStock').checked = true;
+  document.getElementById('adminSaveBtn').textContent = '➕ Добавить';
+  document.getElementById('adminCancelBtn').style.display = 'none';
+}
+document.getElementById('adminCancelBtn').addEventListener('click', cancelEdit);
+document.getElementById('adminSaveBtn').addEventListener('click', function() {
+  const name = document.getElementById('adminName').value.trim();
+  const category = document.getElementById('adminCategory').value;
+  const brand = document.getElementById('adminBrand').value.trim();
+  const price = parseFloat(document.getElementById('adminPrice').value);
+  const rating = parseFloat(document.getElementById('adminRating').value) || 0;
+  const image = document.getElementById('adminImage').value.trim();
+  const inStock = document.getElementById('adminInStock').checked;
+  const desc = document.getElementById('adminDesc').value.trim();
+  if (!name || !price) { alert('Название и цена обязательны'); return; }
+  if (editingId) {
+    const idx = products.findIndex(p => p.id === editingId);
+    if (idx !== -1) {
+      products[idx] = { ...products[idx], name, category, brand, price, rating, image, inStock, desc };
+    }
+    editingId = null;
+  } else {
+    const newId = Math.max(0, ...products.map(p => p.id)) + 1;
+    products.push({ id: newId, name, category, brand, price, rating, image, inStock, desc });
+  }
+  saveProducts();
+  renderAdminList();
+  renderCatalog();
+  renderFavorites();
+  renderTopProducts();
+  generateRecommendations();
+  updateDashboard();
+  cancelEdit();
+});
+
+// ============================================================
+// 13. ЭКСПОРТ CSV
+// ============================================================
+document.getElementById('adminExportBtn').addEventListener('click', function() {
+  if (!products.length) { alert('Нет товаров'); return; }
+  const headers = ['id','name','category','brand','price','rating','inStock','desc','image'];
+  const rows = products.map(p => headers.map(h => {
+    let val = p[h] !== undefined ? p[h] : '';
+    if (typeof val === 'string' && val.includes(',')) val = `"${val}"`;
+    return val;
+  }).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'umay_catalog.csv';
+  link.click();
+});
+
+// ============================================================
+// 14. МОДАЛКА С ДЕТАЛЬНЫМ СРАВНЕНИЕМ
+// ============================================================
+function openModal(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  const prices = getPricesForProduct(p);
+  const best = findBestPrice(prices);
+  let tableRows = prices.map(pr => {
+    const isBest = pr.price === best.price;
+    return `<tr>
+      <td class="platform">${pr.platform.icon} ${pr.platform.name}</td>
+      <td class="${isBest ? 'best' : ''}">${pr.price.toLocaleString()} ₸</td>
+      <td>${pr.inStock ? '✅' : '❌'}</td>
+      <td>${pr.deliveryDays} дн.</td>
+      <td>⭐ ${pr.platform.rating}</td>
+    </tr>`;
+  }).join('');
+  const content = document.getElementById('modalContent');
+  content.innerHTML = `
+    <div class="brand">${p.brand}</div>
+    <div class="name">${p.name}</div>
+    <div class="category">${p.category}</div>
+    <div class="price">${p.price.toLocaleString()} ₸ (базовая)</div>
+    <div class="rating">⭐ ${p.rating}</div>
+    <div class="stock-status ${p.inStock ? 'in' : 'out'}">${p.inStock ? '✅ В наличии' : '❌ Нет'}</div>
+    <div class="desc">${p.desc}</div>
+    <div class="price-comparison">
+      <h4 style="margin-bottom:8px;">📊 Сравнение цен на всех маркетплейсах</h4>
+      <table>
+        <tr><th>Платформа</th><th>Цена</th><th>В наличии</th><th>Доставка</th><th>Рейтинг</th></tr>
+        ${tableRows}
+      </table>
+      <p style="margin-top:8px; color:#8cf0a0;">🏆 Лучшая цена: ${best.platform.icon} ${best.platform.name} — ${best.price.toLocaleString()} ₸</p>
+      <a href="#" class="buy-link" onclick="alert('Переход к покупке на ${best.platform.name}')" style="display:inline-block; margin-top:8px; background:#2d8f5c; color:#fff; padding:6px 20px; border-radius:30px; text-decoration:none;">🛒 Перейти к покупке</a>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="toggleFavorite(${p.id}); openModal(${p.id});">${isFavorite(p.id) ? '❤️ В избранном' : '🤍 В избранное'}</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Закрыть</button>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function openPriceCompare(id) {
+  openModal(id);
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+
+// ============================================================
+// 15. ИЗБРАННОЕ
+// ============================================================
+function renderFavorites() {
+  const grid = document.getElementById('favoritesGrid');
+  const favProducts = products.filter(p => favorites.includes(p.id));
+  if (!favProducts.length) { grid.innerHTML = `<div class="empty-state"><div class="icon">💔</div><p>Нет избранных товаров.</p></div>`; return; }
+  grid.innerHTML = favProducts.map(p => {
+    const prices = getPricesForProduct(p);
+    const best = findBestPrice(prices);
+    return `
+      <div class="product-card" onclick="openModal(${p.id})">
+        <div class="brand">${p.brand}</div>
+        <div class="name">${p.name}</div>
+        <div class="category">${p.category}</div>
+        <div class="price">${p.price.toLocaleString()} ₸</div>
+        <div class="rating">⭐ ${p.rating}</div>
+        <div class="desc">${p.desc}</div>
+        <div class="stock ${p.inStock ? 'in' : 'out'}">${p.inStock ? '✅ В наличии' : '❌ Нет'}</div>
+        <div class="best-price-badge">🏆 Лучшая: ${best.price.toLocaleString()} ₸ (${best.platform.name})</div>
+        <div class="actions">
+          <button class="fav-btn active" onclick="event.stopPropagation(); toggleFavorite(${p.id});">❤️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// 16. РЕКОМЕНДАЦИИ
+// ============================================================
+function generateRecommendations() {
+  const list = document.getElementById('recList');
+  const top = products.sort((a,b) => b.rating - a.rating).slice(0,5);
+  list.innerHTML = top.map(p => {
+    const prices = getPricesForProduct(p);
+    const best = findBestPrice(prices);
+    return `
+      <div class="rec-item">
+        <span class="name">${p.name} (${p.brand})</span>
+        <span class="price">${best.price.toLocaleString()} ₸ ⭐${p.rating}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// 17. ИНИЦИАЛИЗАЦИЯ
+// ============================================================
+loadProducts();
+renderChat();
+renderCatalog();
+renderFavorites();
+renderTopProducts();
+generateRecommendations();
+updateDashboard();
+autoInterval = setInterval(updateDashboard, 5000);
+</script>
+</body>
+</html>

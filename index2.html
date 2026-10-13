@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Лаборатория робота</title>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      background: #0b0e14;
+      color: #e4e7ed;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .app {
+      max-width: 800px;
+      width: 100%;
+      background: #141a24;
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      margin-bottom: 20px;
+      color: #f0f4ff;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      background: #1e2633;
+      border-radius: 16px;
+      padding: 6px;
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: #a0aab8;
+      font-size: 16px;
+      font-weight: 500;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .tab-btn.active {
+      background: #2d3748;
+      color: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .tab-btn:hover {
+      background: #2a3343;
+      color: #fff;
+    }
+    .tab-content {
+      display: none;
+      animation: fade 0.25s;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    @keyframes fade {
+      from { opacity: 0.4; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* форма */
+    .form-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      background: #1a212c;
+      padding: 18px;
+      border-radius: 18px;
+    }
+    .form-group input,
+    .form-group textarea {
+      flex: 1 1 160px;
+      padding: 10px 14px;
+      background: #0f151f;
+      border: 1px solid #2a3345;
+      border-radius: 12px;
+      color: #e4e7ed;
+      font-size: 14px;
+      outline: none;
+      transition: 0.2s;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      border-color: #5f7ef0;
+      background: #131b28;
+    }
+    .form-group textarea {
+      flex: 1 1 100%;
+      resize: vertical;
+      min-height: 50px;
+    }
+    .form-group button {
+      padding: 10px 24px;
+      background: #5f7ef0;
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: 0.2s;
+      flex: 0 0 auto;
+    }
+    .form-group button:hover {
+      background: #4b6ad9;
+      transform: scale(1.02);
+    }
+
+    /* список записей */
+    .record-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .record-card {
+      background: #1a212c;
+      padding: 16px 18px;
+      border-radius: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 4px solid #5f7ef0;
+      transition: 0.2s;
+    }
+    .record-card:hover {
+      background: #1f2838;
+    }
+    .record-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+    .record-title {
+      font-weight: 600;
+      font-size: 17px;
+    }
+    .record-meta {
+      font-size: 13px;
+      color: #9aa5b5;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .record-result {
+      font-weight: 600;
+      color: #8cf0a0;
+    }
+    .record-note {
+      font-size: 14px;
+      color: #c8d0dc;
+      margin-top: 4px;
+    }
+    .delete-btn {
+      background: transparent;
+      border: none;
+      color: #e06b6b;
+      font-size: 22px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 10px;
+      transition: 0.2s;
+      line-height: 1;
+    }
+    .delete-btn:hover {
+      background: #2f1e1e;
+      color: #ff7a7a;
+    }
+
+    /* аналитика */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #1a212c;
+      padding: 16px;
+      border-radius: 16px;
+      text-align: center;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #9aa5b5;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #f0f4ff;
+      margin-top: 4px;
+    }
+    .chart-container {
+      background: #1a212c;
+      border-radius: 16px;
+      padding: 16px;
+      height: 250px;
+    }
+
+    .empty-msg {
+      color: #6a7688;
+      text-align: center;
+      padding: 40px 0;
+      font-style: italic;
+    }
+
+    @media (max-width: 500px) {
+      .app { padding: 16px; }
+      .form-group { flex-direction: column; }
+      .form-group input, .form-group textarea { flex: 1 1 auto; }
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>🤖 Лаборатория робота</h1>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="records">📋 Записи</button>
+    <button class="tab-btn" data-tab="analytics">📊 Аналитика</button>
+  </div>
+
+  <!-- Вкладка Записи -->
+  <div id="records" class="tab-content active">
+    <div class="form-group">
+      <input type="text" id="expName" placeholder="Название эксперимента" />
+      <input type="date" id="expDate" />
+      <input type="number" id="expResult" placeholder="Результат (число)" />
+      <textarea id="expNote" placeholder="Заметка (необязательно)"></textarea>
+      <button id="addBtn">➕ Добавить</button>
+    </div>
+    <div id="recordList" class="record-list"></div>
+  </div>
+
+  <!-- Вкладка Аналитика -->
+  <div id="analytics" class="tab-content">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">📈 Средний результат</div><div id="avgVal" class="stat-value">—</div></div>
+      <div class="stat-card"><div class="stat-label">🏆 Лучший результат</div><div id="bestVal" class="stat-value">—</div></div>
+    </div>
+    <div class="chart-container">
+      <canvas id="resultChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // ---- Данные ----
+    let records = [];
+
+    // DOM
+    const listEl = document.getElementById('recordList');
+    const nameInp = document.getElementById('expName');
+    const dateInp = document.getElementById('expDate');
+    const resultInp = document.getElementById('expResult');
+    const noteInp = document.getElementById('expNote');
+    const addBtn = document.getElementById('addBtn');
+
+    const avgEl = document.getElementById('avgVal');
+    const bestEl = document.getElementById('bestVal');
+
+    let chart = null;
+
+    // ---- Загрузка из localStorage ----
+    function loadRecords() {
+      try {
+        const data = localStorage.getItem('labRecords');
+        if (data) records = JSON.parse(data);
+        else records = [];
+      } catch (e) { records = []; }
+    }
+
+    function saveRecords() {
+      localStorage.setItem('labRecords', JSON.stringify(records));
+    }
+
+    // ---- Рендер списка ----
+    function renderList() {
+      if (records.length === 0) {
+        listEl.innerHTML = '<div class="empty-msg">Пока нет записей. Добавьте первый эксперимент!</div>';
+        return;
+      }
+      let html = '';
+      // сортировка по дате (новые сверху)
+      const sorted = [...records].sort((a,b) => new Date(b.date) - new Date(a.date));
+      sorted.forEach((r, idx) => {
+        const realIdx = records.indexOf(r); // для удаления
+        html += `
+          <div class="record-card">
+            <div class="record-info">
+              <div class="record-title">${escapeHtml(r.name)}</div>
+              <div class="record-meta">
+                <span>📅 ${r.date}</span>
+                <span class="record-result">📊 ${r.result}</span>
+              </div>
+              ${r.note ? `<div class="record-note">${escapeHtml(r.note)}</div>` : ''}
+            </div>
+            <button class="delete-btn" data-idx="${realIdx}">✕</button>
+          </div>
+        `;
+      });
+      listEl.innerHTML = html;
+
+      // удаление
+      listEl.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const idx = parseInt(this.dataset.idx);
+          if (confirm('Удалить запись?')) {
+            records.splice(idx, 1);
+            saveRecords();
+            renderAll();
+          }
+        });
+      });
+    }
+
+    // простая защита от XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- График и статистика ----
+    function updateAnalytics() {
+      // статистика
+      if (records.length === 0) {
+        avgEl.textContent = '—';
+        bestEl.textContent = '—';
+        if (chart) { chart.destroy(); chart = null; }
+        return;
+      }
+      const results = records.map(r => Number(r.result)).filter(v => !isNaN(v));
+      if (results.length === 0) {
+        avgEl.textContent = '—';
+        bestEl.textContent = '—';
+      } else {
+        const avg = results.reduce((a,b) => a+b, 0) / results.length;
+        const best = Math.max(...results);
+        avgEl.textContent = avg.toFixed(1);
+        bestEl.textContent = best;
+      }
+
+      // график (по датам)
+      const ctx = document.getElementById('resultChart').getContext('2d');
+      if (chart) { chart.destroy(); chart = null; }
+
+      // группировка по дате (суммируем? или берем последний? – по заданию просто график результатов по времени)
+      // будем показывать точки (дата, результат) для каждой записи
+      const sortedByDate = [...records].sort((a,b) => new Date(a.date) - new Date(b.date));
+      const labels = sortedByDate.map(r => r.date);
+      const data = sortedByDate.map(r => Number(r.result) || 0);
+
+      if (labels.length === 0) return;
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Результат',
+            data: data,
+            borderColor: '#5f7ef0',
+            backgroundColor: 'rgba(95,126,240,0.1)',
+            tension: 0.2,
+            pointBackgroundColor: '#8cf0a0',
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#c8d0dc' } }
+          },
+          scales: {
+            x: { ticks: { color: '#9aa5b5', maxRotation: 30 } },
+            y: { ticks: { color: '#9aa5b5' } }
+          }
+        }
+      });
+    }
+
+    // ---- Рендер всего ----
+    function renderAll() {
+      renderList();
+      updateAnalytics();
+    }
+
+    // ---- Добавление записи ----
+    function addRecord() {
+      const name = nameInp.value.trim();
+      const date = dateInp.value;
+      const result = parseFloat(resultInp.value);
+      const note = noteInp.value.trim();
+
+      if (!name) { alert('Введите название'); return; }
+      if (!date) { alert('Выберите дату'); return; }
+      if (isNaN(result)) { alert('Введите числовой результат'); return; }
+
+      records.push({ name, date, result, note });
+      saveRecords();
+
+      // очистить поля
+      nameInp.value = '';
+      dateInp.value = '';
+      resultInp.value = '';
+      noteInp.value = '';
+
+      renderAll();
+    }
+
+    // ---- Вкладки ----
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = {
+      records: document.getElementById('records'),
+      analytics: document.getElementById('analytics')
+    };
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const tab = this.dataset.tab;
+        tabBtns.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        Object.keys(tabContents).forEach(key => {
+          tabContents[key].classList.toggle('active', key === tab);
+        });
+        if (tab === 'analytics') {
+          // перерисовать график (на случай, если не было)
+          updateAnalytics();
+        }
+      });
+    });
+
+    // ---- Инициализация ----
+    loadRecords();
+    // установим сегодняшнюю дату в поле
+    const today = new Date().toISOString().split('T')[0];
+    dateInp.value = today;
+
+    addBtn.addEventListener('click', addRecord);
+
+    renderAll();
+
+    // перерисовка графика при переключении на вкладку аналитики – уже сделано выше
+  })();
+</script>
+</body>
+</html>

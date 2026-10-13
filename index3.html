@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ИИ-командир робота</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, sans-serif;
+    }
+    body {
+      background: #0b0e14;
+      color: #e4e7ed;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .app {
+      max-width: 800px;
+      width: 100%;
+      background: #141a24;
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .sub {
+      color: #9aa5b5;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .input-area {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 14px 18px;
+      background: #0f151f;
+      border: 1px solid #2a3345;
+      border-radius: 14px;
+      color: #e4e7ed;
+      font-size: 16px;
+      outline: none;
+      min-width: 200px;
+    }
+    .input-area input:focus {
+      border-color: #5f7ef0;
+    }
+    .input-area button {
+      padding: 14px 32px;
+      background: #5f7ef0;
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+      white-space: nowrap;
+    }
+    .input-area button:hover {
+      background: #4b6ad9;
+      transform: scale(1.02);
+    }
+    .input-area button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+    }
+    .canvas-wrap {
+      background: #0f151f;
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    canvas {
+      width: 100%;
+      max-width: 500px;
+      aspect-ratio: 1/1;
+      background: #1a212c;
+      border-radius: 12px;
+      display: block;
+    }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      min-height: 40px;
+    }
+    .status-msg {
+      color: #b0bac8;
+      font-size: 15px;
+      flex: 1;
+    }
+    .status-msg.error {
+      color: #f77;
+    }
+    .status-msg.success {
+      color: #8cf0a0;
+    }
+    .status-msg.loading {
+      color: #f0d070;
+    }
+    .status-msg .highlight {
+      color: #fff;
+      font-weight: 500;
+    }
+    .btn-reset {
+      background: #2d3748;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 10px;
+      color: #c8d0dc;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.2s;
+    }
+    .btn-reset:hover {
+      background: #3f4a60;
+    }
+    .raw-response {
+      margin-top: 12px;
+      background: #0f151f;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      color: #9aa5b5;
+      word-break: break-all;
+      max-height: 120px;
+      overflow-y: auto;
+      border: 1px solid #1f2838;
+      display: none;
+    }
+    .raw-response.visible {
+      display: block;
+    }
+    .raw-response strong {
+      color: #c8d0dc;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>🤖 ИИ-командир робота</h1>
+  <div class="sub">Напиши, что делать роботу, и ИИ превратит это в команды</div>
+
+  <div class="input-area">
+    <input type="text" id="commandInput" placeholder="Например: проедь вперёд 3, поверни направо и ещё 2" />
+    <button id="executeBtn">🚀 Выполнить</button>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="robotCanvas" width="500" height="500"></canvas>
+  </div>
+
+  <div class="status">
+    <div id="statusMsg" class="status-msg">Готов к командам</div>
+    <button class="btn-reset" id="resetBtn">🔄 Сбросить</button>
+  </div>
+
+  <div id="rawResponse" class="raw-response"></div>
+</div>
+
+<script>
+  (function() {
+    // ===== КОНФИГ =====
+    // ВСТАВЬ СВОЙ API-КЛЮЧ DEEPSEEK (не выкладывай в публичный репозиторий!)
+    const API_KEY = 'sk-e11e9aaddf1240988871c2cbdd09e68a';  // замени на реальный ключ
+    const API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+    // ===== СОСТОЯНИЕ РОБОТА =====
+    const canvas = document.getElementById('robotCanvas');
+    const ctx = canvas.getContext('2d');
+    const size = 500;
+    const cellSize = 50;    // 10x10 сетка
+    const cols = 10, rows = 10;
+
+    // позиция робота (в клетках, от 0 до 9)
+    let robotX = 0, robotY = 0;
+    // направление: 0 - вверх, 1 - вправо, 2 - вниз, 3 - влево
+    let direction = 1; // начинаем смотреть вправо
+    // след (массив точек {x,y})
+    let trail = [{x:0, y:0}];
+    // флаг анимации
+    let isAnimating = false;
+    let animationQueue = [];
+
+    // DOM элементы
+    const statusMsg = document.getElementById('statusMsg');
+    const rawDiv = document.getElementById('rawResponse');
+    const inputField = document.getElementById('commandInput');
+    const executeBtn = document.getElementById('executeBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // ===== ОТРИСОВКА =====
+    function draw() {
+      ctx.clearRect(0, 0, size, size);
+
+      // сетка
+      ctx.strokeStyle = '#2a3345';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= cols; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * cellSize, 0);
+        ctx.lineTo(i * cellSize, size);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, i * cellSize);
+        ctx.lineTo(size, i * cellSize);
+        ctx.stroke();
+      }
+
+      // след (линии)
+      if (trail.length > 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#5f7ef0';
+        ctx.lineWidth = 4;
+        ctx.moveTo(trail[0].x * cellSize + cellSize/2, trail[0].y * cellSize + cellSize/2);
+        for (let i = 1; i < trail.length; i++) {
+          ctx.lineTo(trail[i].x * cellSize + cellSize/2, trail[i].y * cellSize + cellSize/2);
+        }
+        ctx.stroke();
+      }
+
+      // робот (квадратик)
+      const cx = robotX * cellSize + cellSize/2;
+      const cy = robotY * cellSize + cellSize/2;
+      const half = cellSize * 0.35;
+      ctx.fillStyle = '#8cf0a0';
+      ctx.shadowColor = '#8cf0a0';
+      ctx.shadowBlur = 12;
+      ctx.fillRect(cx - half, cy - half, half*2, half*2);
+      ctx.shadowBlur = 0;
+
+      // "глаз" для направления
+      ctx.fillStyle = '#0b0e14';
+      let dx = 0, dy = 0;
+      if (direction === 0) dy = -1;
+      else if (direction === 1) dx = 1;
+      else if (direction === 2) dy = 1;
+      else if (direction === 3) dx = -1;
+      ctx.beginPath();
+      ctx.arc(cx + dx * half*0.7, cy + dy * half*0.7, 6, 0, 2*Math.PI);
+      ctx.fill();
+
+      // координаты в углу
+      ctx.fillStyle = '#9aa5b5';
+      ctx.font = '12px monospace';
+      ctx.fillText(`(${robotX},${robotY})`, 8, 20);
+    }
+
+    // ===== ДВИЖЕНИЕ (анимация по очереди) =====
+    function moveRobot(cmd) {
+      return new Promise((resolve) => {
+        const type = cmd.cmd;
+        const n = cmd.n || 1;
+
+        if (type === 'forward') {
+          let steps = n;
+          const interval = setInterval(() => {
+            if (steps <= 0) { clearInterval(interval); resolve(); return; }
+            let nx = robotX, ny = robotY;
+            if (direction === 0) ny--;
+            else if (direction === 1) nx++;
+            else if (direction === 2) ny++;
+            else if (direction === 3) nx--;
+            // проверка границ
+            if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) {
+              clearInterval(interval);
+              statusMsg.textContent = '⚠️ Робот упёрся в стену!';
+              statusMsg.className = 'status-msg error';
+              resolve();
+              return;
+            }
+            robotX = nx;
+            robotY = ny;
+            trail.push({x: robotX, y: robotY});
+            draw();
+            steps--;
+          }, 400);
+        } else if (type === 'left') {
+          direction = (direction + 3) % 4;
+          draw();
+          setTimeout(resolve, 300);
+        } else if (type === 'right') {
+          direction = (direction + 1) % 4;
+          draw();
+          setTimeout(resolve, 300);
+        } else if (type === 'stop') {
+          statusMsg.textContent = '🛑 Робот остановлен';
+          statusMsg.className = 'status-msg';
+          setTimeout(resolve, 300);
+        } else {
+          resolve();
+        }
+      });
+    }
+
+    async function runCommands(commands) {
+      if (isAnimating) return;
+      isAnimating = true;
+      executeBtn.disabled = true;
+      statusMsg.textContent = '⏳ Выполняю команды...';
+      statusMsg.className = 'status-msg loading';
+
+      for (const cmd of commands) {
+        await moveRobot(cmd);
+        // если была ошибка стены, прерываем
+        if (statusMsg.className.includes('error')) break;
+      }
+
+      if (!statusMsg.className.includes('error')) {
+        statusMsg.textContent = '✅ Команды выполнены!';
+        statusMsg.className = 'status-msg success';
+      }
+      isAnimating = false;
+      executeBtn.disabled = false;
+    }
+
+    // ===== ВЫЗОВ DEEPSEEK =====
+    async function callDeepSeek(phrase) {
+      const messages = [
+        { role: 'system', content: 'Ты — помощник робота. Преврати команды на естественном языке в JSON-массив команд для робота. Команды: {"cmd":"forward","n":число}, {"cmd":"left"}, {"cmd":"right"}, {"cmd":"stop"}. Отвечай только JSON-массивом, без пояснений.' },
+        { role: 'user', content: phrase }
+      ];
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: messages,
+          temperature: 0.3,
+          max_tokens: 300
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`API ошибка ${response.status}: ${errText}`);
+      }
+      const data = await response.json();
+      const raw = data.choices[0].message.content;
+      return raw;
+    }
+
+    // ===== ОБРАБОТКА ФРАЗЫ =====
+    async function handleCommand() {
+      const phrase = inputField.value.trim();
+      if (!phrase) {
+        statusMsg.textContent = 'Введите команду!';
+        statusMsg.className = 'status-msg error';
+        return;
+      }
+      if (isAnimating) {
+        statusMsg.textContent = '⏳ Дождитесь окончания анимации';
+        return;
+      }
+
+      // Показываем индикатор загрузки
+      statusMsg.textContent = '🧠 ИИ думает...';
+      statusMsg.className = 'status-msg loading';
+      executeBtn.disabled = true;
+      rawDiv.classList.remove('visible');
+      rawDiv.textContent = '';
+
+      try {
+        // 1. Запрос к DeepSeek
+        const rawAnswer = await callDeepSeek(phrase);
+
+        // Показываем сырой ответ (для отладки)
+        rawDiv.innerHTML = `<strong>Сырой ответ ИИ:</strong> ${escapeHtml(rawAnswer)}`;
+        rawDiv.classList.add('visible');
+
+        // 2. Парсим JSON
+        let commands;
+        try {
+          // Удаляем возможные Markdown-обёртки
+          let jsonStr = rawAnswer.replace(/```json/g, '').replace(/```/g, '').trim();
+          commands = JSON.parse(jsonStr);
+        } catch (e) {
+          throw new Error('Ответ ИИ не является валидным JSON. Попробуйте переформулировать команду.');
+        }
+
+        if (!Array.isArray(commands) || commands.length === 0) {
+          throw new Error('Ответ содержит не массив команд или пуст.');
+        }
+
+        // Проверка команд
+        for (const cmd of commands) {
+          if (!cmd.cmd) throw new Error('Команда не содержит поле "cmd"');
+          if (!['forward','left','right','stop'].includes(cmd.cmd)) {
+            throw new Error(`Неизвестная команда: ${cmd.cmd}`);
+          }
+          if (cmd.cmd === 'forward' && (typeof cmd.n !== 'number' || cmd.n <= 0)) {
+            throw new Error('Для forward нужно положительное число n');
+          }
+        }
+
+        statusMsg.textContent = `✅ Получено ${commands.length} команд. Выполняю...`;
+        statusMsg.className = 'status-msg success';
+
+        // 3. Выполнить команды
+        await runCommands(commands);
+
+      } catch (error) {
+        statusMsg.textContent = `❌ Ошибка: ${error.message}`;
+        statusMsg.className = 'status-msg error';
+      } finally {
+        executeBtn.disabled = false;
+      }
+    }
+
+    // ===== СБРОС =====
+    function resetRobot() {
+      if (isAnimating) return;
+      robotX = 0; robotY = 0;
+      direction = 1;
+      trail = [{x:0, y:0}];
+      draw();
+      statusMsg.textContent = '🔄 Робот сброшен в начало';
+      statusMsg.className = 'status-msg';
+      rawDiv.classList.remove('visible');
+    }
+
+    // ===== ВСПОМОГАТЕЛЬНЫЕ =====
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ===== СОБЫТИЯ =====
+    executeBtn.addEventListener('click', handleCommand);
+    resetBtn.addEventListener('click', resetRobot);
+    inputField.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleCommand();
+    });
+
+    // Начальная отрисовка
+    draw();
+    statusMsg.textContent = 'Готов к командам';
+  })();
+</script>
+</body>
+</html>
